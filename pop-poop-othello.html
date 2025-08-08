@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>オセロ風（便器 vs うんこ）</title>
+<style>
+  body { font-family: system-ui, sans-serif; text-align: center; background:#eef5f9; }
+  #board { display: grid; grid-template-columns: repeat(8, 54px); gap: 2px; margin: 18px auto; width: max-content; }
+  .cell {
+    width: 54px; height: 54px; background: #6bb1c9; /* タイル色 */
+    display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 6px;
+  }
+  .piece { font-size: 34px; line-height: 1; }
+  .hint { font-size: 12px; color:#555; margin-top:4px; }
+</style>
+</head>
+<body>
+<h1>便器 vs うんこ</h1>
+<div id="board"></div>
+<p>ターン: <span id="turnLabel">💩 うんこ</span></p>
+<p class="hint">※ 反転できない場所には置けません（8方向判定）。</p>
+
+<script>
+const board = document.getElementById('board');
+const turnLabel = document.getElementById('turnLabel');
+let turn = 'poop'; // poop(黒相当) / toilet(白相当)
+let cells = Array(64).fill(null);
+
+// 盤面生成
+for (let i = 0; i < 64; i++) {
+  const cell = document.createElement('div');
+  cell.className = 'cell';
+  cell.addEventListener('click', () => tryPlace(i));
+  board.appendChild(cell);
+}
+
+// 初期配置（中央4つ）
+cells[27] = 'toilet'; cells[28] = 'poop';
+cells[35] = 'poop';   cells[36] = 'toilet';
+render();
+
+function render(){
+  [...board.children].forEach((cell, i) => {
+    cell.innerHTML = '';
+    if (cells[i]) {
+      const p = document.createElement('div');
+      p.className = 'piece';
+      p.textContent = cells[i] === 'poop' ? '💩' : '🚽';
+      cell.appendChild(p);
+    }
+  });
+  turnLabel.textContent = turn === 'poop' ? '💩 うんこ' : '🚽 便器';
+}
+
+function tryPlace(index){
+  if (cells[index]) return; // 既に置いてある
+  const flips = getFlips(index, turn);
+  if (flips.length === 0) return; // 反転できない場所は無視
+  cells[index] = turn;
+  for (const f of flips) cells[f] = turn;
+  turn = (turn === 'poop') ? 'toilet' : 'poop';
+  render();
+}
+
+// 8方向すべてで反転対象を取得
+function getFlips(index, color){
+  const dirs = [1,-1,8,-8,9,-9,7,-7]; // → ← ↓ ↑ ↘ ↖ ↙ ↗
+  let all = [];
+  for (const d of dirs){
+    const line = collectDirection(index, d, color);
+    if (line.length) all = all.concat(line);
+  }
+  return all;
+}
+
+function collectDirection(start, dir, color){
+  const flips = [];
+  let i = start;
+
+  while (true){
+    const row = Math.floor(i/8), col = i%8;
+    // 次に進めるか境界チェック
+    if ((dir === 1  && col === 7) || (dir === -1 && col === 0) ||
+        (dir === 8  && row === 7) || (dir === -8 && row === 0) ||
+        (dir === 9  && (row === 7 || col === 7)) ||
+        (dir === -9 && (row === 0 || col === 0)) ||
+        (dir === 7  && (row === 7 || col === 0)) ||
+        (dir === -7 && (row === 0 || col === 7))) {
+      return []; // 盤外
+    }
+    i += dir;
+    if (i < 0 || i >= 64) return [];
+
+    if (!cells[i]) return []; // 空マスに当たったら不成立
+    if (cells[i] === color){
+      return flips.length ? flips : []; // 自分色に到達：間に相手色が1つ以上ならOK
+    } else {
+      flips.push(i); // 相手色を貯める
+    }
+  }
+}
+</script>
+</body>
+</html>
